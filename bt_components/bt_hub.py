@@ -21,10 +21,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- Configuration Constants ---
-DEFAULT_SCAN_TIMEOUT_SEC = 5.0
-DEFAULT_CONNECT_TIMEOUT_SEC = 10.0
+DEFAULT_SCAN_TIMEOUT_SEC = 10.0
+DEFAULT_CONNECT_TIMEOUT_SEC = 15.0
 DEFAULT_CONNECT_RETRIES = 3
-DEFAULT_CONNECT_RETRY_DELAY_SEC = 2.0
+DEFAULT_CONNECT_RETRY_DELAY_SEC = 3.0
 EXAMPLE_TARGET_CHARACTERISTIC_UUID = "00002a37-0000-1000-8000-00805f9b34fb" # Heart Rate Measurement
 
 @dataclass
@@ -344,13 +344,14 @@ async def example_usage():
             return
 
         print("--- Discovered Devices ---")
-        for i, device_dict in enumerate(devices_found_dicts):
-            print(f"  {i}: {device_dict.get('name')} ({device_dict.get('address')}) RSSI: {device_dict.get('rssi')}")
 
         named_devices = [d for d in devices_found_dicts if d.get('name') != "Unknown"]
         if not named_devices:
             print("\nINFO: No named devices found to connect to. Exiting example.")
             return
+
+        for i, device_dict in enumerate(named_devices):
+            print(f"  {i}: {device_dict.get('name')} ({device_dict.get('address')}) RSSI: {device_dict.get('rssi')}")
 
         target_device_dict = named_devices[0]
         target_address = target_device_dict['address']
