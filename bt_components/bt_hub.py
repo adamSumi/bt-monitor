@@ -343,7 +343,7 @@ async def example_usage():
             print("INFO: No devices found during scan.")
             return
 
-        print("--- Discovered Devices ---")
+        print("--- Discovered Devices (Named Only) ---")
 
         named_devices = [d for d in devices_found_dicts if d.get('name') != "Unknown"]
         if not named_devices:
