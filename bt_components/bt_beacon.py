@@ -115,7 +115,6 @@ class MyBeacon:
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--name', '-n', help="Beacon Name", type=str)
 parser.add_argument('--uuid', action='store_true', help="Generate a random UUID")
 
 def generate_uuid():
