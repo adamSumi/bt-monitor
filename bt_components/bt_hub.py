@@ -2,6 +2,7 @@
 import asyncio
 import sys
 import logging
+import struct
 from dataclasses import dataclass, field
 from typing import Dict, Optional, List, Callable, Any
 
@@ -21,7 +22,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- Configuration Constants ---
-DEFAULT_SCAN_TIMEOUT_SEC = 5.0
+DEFAULT_SCAN_TIMEOUT_SEC = 10.0
 DEFAULT_CONNECT_TIMEOUT_SEC = 15.0
 DEFAULT_CONNECT_RETRIES = 3
 DEFAULT_CONNECT_RETRY_DELAY_SEC = 3.0
@@ -319,6 +320,13 @@ async def example_usage():
     hub = BLEHub()
     char_to_notify_uuid = EXAMPLE_TARGET_CHARACTERISTIC_UUID
 
+    def beacon_notification_handler(address: str, data: bytes):
+        try:
+            sensor_data = struct.unpack('<III', data)
+            print(f"Data: {sensor_data}")
+        except Exception as e:
+            logger.error(f"Error in example_usage notification_handler for {address}: {e}")
+
     def robust_notification_handler(address: str, data: bytes):
         try:
             hex_data = data.hex()
@@ -353,13 +361,15 @@ async def example_usage():
         if not named_devices:
             print("\nINFO: No named devices found to connect to. Exiting example.")
             return
-
+        beacon_found = False
         for i, device_dict in enumerate(named_devices):
             print(f"  {i}: {device_dict.get('name')} ({device_dict.get('address')}) RSSI: {device_dict.get('rssi')}")
             if device_dict["name"] == "RaspPiBeacon":
+                beacon_found = True
                 target_device_dict = device_dict
         if target_device_dict is None:
             target_device_dict = named_devices[0]
+            return
         target_address = target_device_dict['address']
         target_name = target_device_dict['name']
         print(f"\n--- Attempting to connect to: {target_name} ({target_address}) ---")
@@ -402,13 +412,22 @@ async def example_usage():
 
                 if characteristic_to_notify_obj and "notify" in characteristic_to_notify_obj.properties:
                     print(f"\n--- Starting notifications for: {char_to_notify_uuid} ---")
-                    if await hub.start_notify(target_address, char_to_notify_uuid, robust_notification_handler):
-                        print(f"  Notifications started. Waiting for 10 seconds...")
-                        await asyncio.sleep(10)
-                        print(f"\n--- Stopping notifications for {char_to_notify_uuid} ---")
-                        await hub.stop_notify(target_address, char_to_notify_uuid)
+                    if not beacon_found:
+                        if await hub.start_notify(target_address, char_to_notify_uuid, robust_notification_handler):
+                            print(f"  Notifications started. Waiting for 10 seconds...")
+                            await asyncio.sleep(10)
+                            print(f"\n--- Stopping notifications for {char_to_notify_uuid} ---")
+                            await hub.stop_notify(target_address, char_to_notify_uuid)
+                        else:
+                            print(f"  Failed to start notifications for {char_to_notify_uuid}")
                     else:
-                        print(f"  Failed to start notifications for {char_to_notify_uuid}")
+                        if await hub.start_notify(target_address, char_to_notify_uuid, beacon_notification_handler):
+                            print(f"  Notifications started. Waiting for 10 seconds...")
+                            await asyncio.sleep(10)
+                            print(f"\n--- Stopping notifications for {char_to_notify_uuid} ---")
+                            await hub.stop_notify(target_address, char_to_notify_uuid)
+                        else:
+                            print(f"  Failed to start notifications for {char_to_notify_uuid}")
                 else:
                     print(f"\nINFO: Characteristic {char_to_notify_uuid} not found or does not support 'notify'.")
             else:
