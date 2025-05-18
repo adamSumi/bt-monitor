@@ -466,7 +466,7 @@ async def beacon_usage():
     except BleakError as e:
         print(f"A BleakError occurred in beacon_usage: {e}")
     except Exception as e:
-        print(f"An unexpected error occurred in beacon_usage: {e}", exc_info=True)
+        print(f"An unexpected error occurred in beacon_usage: {e}")
     finally:
         print("\n--- Shutting down Beacon Hub ---")
         await hub.shutdown()
