@@ -15,7 +15,7 @@ MY_SERVICE_UUID = 'da28c736-042f-4b45-bfb8-265185ce2cbb'
 MY_CHARACTERISTIC_UUID = '1dc7211f-fd34-43e1-ade8-4b9544c9d999'
 
 # Canned list of 3 integers to report
-CANNED_INTEGERS = [123, 456, 789] # Example integers
+CANNED_VALS = [78.2, 54.3, 65, "plant_1"] # Example
 
 # --- Logging Setup ---
 # You can enable debug logging for bluezero if needed
@@ -59,24 +59,22 @@ class MyBeacon:
             notify_callback=self.notify_data_callback
         )
 
-        self.data_to_send_bytes = self.pack_integers(CANNED_INTEGERS)
-        logger.info(f"Prepared data: {CANNED_INTEGERS} as bytes: {self.data_to_send_bytes.hex()}")
+        self.data_to_send_bytes = self.pack_integers(CANNED_VALS)
+        logger.info(f"Prepared data: {CANNED_VALS} as bytes: {self.data_to_send_bytes.hex()}")
 
-    def pack_integers(self, int_list):
+    def pack_values(self, val_list):
         """
         Packs a list of 3 integers into a byte array.
         Using <h for signed short (2 bytes each), little-endian.
         Adjust format string if different integer sizes/types are needed.
         Example: 3 shorts = 6 bytes.
         """
-        if len(int_list) != 3:
-            raise ValueError("Expected a list of 3 integers.")
         # '<' for little-endian, 'h' for short (2 bytes). Use 'i' for 4-byte int etc.
         # This will create a 6-byte array for three 2-byte integers.
         try:
-            return struct.pack(f'<{len(int_list)}I', *int_list)
+            return struct.pack(f'<ffH{len(val_list[3])}s', *val_list)
         except struct.error as e:
-            logger.error(f"Error packing integers {int_list}: {e}")
+            logger.error(f"Error packing values {val_list}: {e}")
             logger.error("Ensure integers are within the range of a signed short (-32768 to 32767).")
             # Fallback or re-raise
             return b'\x00\x00\x00\x00\x00\x00' # Default 6-byte zero value

@@ -374,8 +374,15 @@ async def beacon_usage():
 
     def beacon_notification_handler(address: str, data: bytes):
         try:
-            sensor_data = struct.unpack('<III', data)
-            print(f"Data: {sensor_data}")
+            sensor_type = '<ffh'
+            sensor_size = struct.calcsize(sensor_type)
+            if len(data) < sensor_size:
+                print(f"error: Data size: {len(data)}, expected size: {sensor_size}")
+                return
+            sensor_temp, sensor_humidity, sensor_soil = struct.unpack(sensor_type, data[:sensor_size])
+            sensor_name_bytes = data[sensor_size:]
+            sensor_name = sensor_name_bytes.decode('utf-8', errors='ignore')
+            print(f"{sensor_name}: Temperature: {sensor_temp}, Humidity: {sensor_humidity}, Soil Moisture: {sensor_soil}")
         except Exception as e:
             print(f"Error in example_usage notification_handler for {address}: {e}")
 
