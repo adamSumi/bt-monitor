@@ -367,6 +367,14 @@ class BLEHub:
         if self.logging:
             print("BLE Hub shutdown complete.")
 
+def get_beacon_names(beacon_name_file):
+    b_names = []
+    with open(beacon_name_file, 'r') as names:
+        for name in names:
+            if len(name) > 0:
+                b_names.append(name.rstrip())
+    return b_names
+
 async def beacon_usage():
     print("--- Starting Beacon Hub ---")
     hub = BLEHub()
@@ -374,19 +382,21 @@ async def beacon_usage():
 
     def beacon_notification_handler(address: str, data: bytes):
         try:
-            sensor_type = '<ffh'
+            sensor_type = '<ffH'
             sensor_size = struct.calcsize(sensor_type)
             if len(data) < sensor_size:
                 print(f"error: Data size: {len(data)}, expected size: {sensor_size}")
                 return
             sensor_temp, sensor_humidity, sensor_soil = struct.unpack(sensor_type, data[:sensor_size])
+            sensor_temp = round(sensor_temp, 2)
+            sensor_humidity = round(sensor_humidity, 2)
             sensor_name_bytes = data[sensor_size:]
             sensor_name = sensor_name_bytes.decode('utf-8', errors='ignore')
             print(f"{sensor_name}: Temperature: {sensor_temp}, Humidity: {sensor_humidity}, Soil Moisture: {sensor_soil}")
         except Exception as e:
             print(f"Error in example_usage notification_handler for {address}: {e}")
 
-    beacon_names = ["RaspPiBeacon", "RaspPiBeacon2", "RaspPiBeacon3"]
+    beacon_names = get_beacon_names('beacon_names.conf')
 
     try:
         print(f"Scanning for devices, Scan Duration: {DEFAULT_SCAN_TIMEOUT_SEC} seconds...")
@@ -448,17 +458,17 @@ async def beacon_usage():
                     if readable_char_obj:
                         break
 
-                if readable_char_obj:
-                    print(f"\n--- Reading from characteristic: {readable_char_obj.uuid} ---")
-                    value = await hub.read_characteristic(addr, readable_char_obj.uuid) # Pass UUID string
-                    print(f"  Read value: {value.hex() if value else 'N/A'} (Decoded: '{value.decode(errors='ignore') if value else ''}')")
-                else:
-                    print("\nINFO: No readable characteristic found.")
+                # if readable_char_obj:
+                #     print(f"\n--- Reading from characteristic: {readable_char_obj.uuid} ---")
+                #     value = await hub.read_characteristic(addr, readable_char_obj.uuid) # Pass UUID string
+                #     print(f"  Read value: {value.hex() if value else 'N/A'} (Decoded: '{value.decode(errors='ignore') if value else ''}')")
+                # else:
+                #     print("\nINFO: No readable characteristic found.")
 
                 characteristic_to_notify_obj = services.get_characteristic(char_to_notify_uuid)
 
                 if characteristic_to_notify_obj and "notify" in characteristic_to_notify_obj.properties:
-                    notif_window = 3
+                    notif_window = 5
                     if await hub.start_notify(addr, char_to_notify_uuid, beacon_notification_handler):
                         print(f"  Notifications started. Waiting for {notif_window} seconds...")
                         await asyncio.sleep(notif_window)
@@ -585,7 +595,6 @@ async def one_device_usage():
     finally:
         print("\n--- Shutting down BLE Hub Example ---")
         await hub.shutdown()
-
 
 if __name__ == "__main__":
     try:
