@@ -5,7 +5,7 @@ import logging
 import socket
 import struct # For packing integers into bytes
 
-from bluezero import async_tools
+from dataclasses import dataclass
 from bluezero import adapter
 from bluezero import peripheral
 
@@ -14,9 +14,17 @@ from bluezero import peripheral
 MY_SERVICE_UUID = 'da28c736-042f-4b45-bfb8-265185ce2cbb'
 MY_CHARACTERISTIC_UUID = '1dc7211f-fd34-43e1-ade8-4b9544c9d999'
 
-# Canned list of 3 integers to report
-CANNED_VALS = [78.2, 54.3, 65, "plant_1"] # Example
+@dataclass
+class SensorInfo:
+    sensor_name: str
+    air_temp: float
+    humidity: float
+    soil_moisture: int
 
+test_data = SensorInfo(sensor_name="plant_1",
+                        air_temp=78.2,
+                        humidity=54.3,
+                        soil_moisture=65)
 # --- Logging Setup ---
 # You can enable debug logging for bluezero if needed
 # logging.basicConfig(level=logging.DEBUG)
@@ -59,10 +67,10 @@ class MyBeacon:
             notify_callback=self.notify_data_callback
         )
 
-        self.data_to_send_bytes = self.pack_integers(CANNED_VALS)
-        logger.info(f"Prepared data: {CANNED_VALS} as bytes: {self.data_to_send_bytes.hex()}")
+        self.data_to_send_bytes = self.pack_values(test_data)
+        logger.info(f"Prepared data: {test_data} as bytes: {self.data_to_send_bytes.hex()}")
 
-    def pack_values(self, val_list):
+    def pack_values(self, sensor_info: SensorInfo):
         """
         Packs a list of 3 integers into a byte array.
         Using <h for signed short (2 bytes each), little-endian.
@@ -72,9 +80,14 @@ class MyBeacon:
         # '<' for little-endian, 'h' for short (2 bytes). Use 'i' for 4-byte int etc.
         # This will create a 6-byte array for three 2-byte integers.
         try:
-            return struct.pack(f'<ffH{len(val_list[3])}s', *val_list)
+            pack_format = f'<ffH{len(sensor_info.sensor_name)}s'
+            return struct.pack(pack_format,
+                                sensor_info.air_temp,
+                                sensor_info.humidity,
+                                sensor_info.soil_moisture,
+                                sensor_info.sensor_name.encode('utf-8'))
         except struct.error as e:
-            logger.error(f"Error packing values {val_list}: {e}")
+            logger.error(f"Error packing values {sensor_info}: {e}")
             logger.error("Ensure integers are within the range of a signed short (-32768 to 32767).")
             # Fallback or re-raise
             return b'\x00\x00\x00\x00\x00\x00' # Default 6-byte zero value
@@ -106,7 +119,7 @@ class MyBeacon:
         """
         logger.info(f"Starting BLE peripheral '{self.local_name}'...")
         logger.info(f"  Service UUID: {MY_SERVICE_UUID}")
-        logger.info(f"  Characteristic UUID: {MY_CHARACTERISTIC_UUID} (for 3 integers)")
+        logger.info(f"  Characteristic UUID: {MY_CHARACTERISTIC_UUID} (for sensor data)")
         logger.info("Advertising started. Waiting for connections...")
         self.ble_peripheral.publish() # This registers services and starts advertising/processing connections
         logger.info("Peripheral stopped.")
